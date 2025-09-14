@@ -5,6 +5,8 @@
 import { revalidatePath } from 'next/cache'
 import { User, userSchema } from './schemas'
 import { cache } from 'react'
+import { randomUUID } from 'crypto';
+
 
 const users: User[] = [
     { id: '1', name: 'John Doe', phoneNumber: '0412345678', email: 'john@example.com' },
@@ -27,7 +29,8 @@ export async function searchUsers(query: string): Promise<User[]> {
 }
 
 export async function addUser(data: Omit<User, 'id'>): Promise<User> {
-    const newId = crypto.randomUUID();
+    const newId = randomUUID();
+    console.log(newId);
     const newUser = { ...data, id: newId }
     const validatedUser = userSchema.parse(newUser)
     users.push(validatedUser)
@@ -42,7 +45,6 @@ export async function deleteUser(id: string): Promise<void> {
     users.splice(index, 1)
     console.log(`User with id ${id} has been deleted.`)
     revalidatePath('/') // Revalidate the page or component path
-
 }
 
 export async function updateUser(id: string, data: Partial<Omit<User, 'id'>>): Promise<User> {

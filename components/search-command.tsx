@@ -170,7 +170,7 @@ export const SearchCommand = <T,>({
         <PopoverContent 
           className="w-[--radix-popover-trigger-width] p-0" 
           align="start"
-          onOpenAutoFocus={(e) => e.preventDefault()}
+          onOpenAutoFocus={(e: { preventDefault: () => any }) => e.preventDefault()}
         >
           {(items.length > 0 || loading) && (
             <Command shouldFilter={false}>
