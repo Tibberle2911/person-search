@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useForm, type UseFormReturn, type FieldValues, type DefaultValues } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod"; // ✅ Import the official resolver
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,8 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { toast } from "sonner"; // Using Sonner for notifications
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { ZodType } from "zod";
 
 export interface ActionState<T> {
@@ -48,22 +49,12 @@ export default function MutableDialog<T extends FieldValues>({
 }: GenericDialogProps<T>) {
   const [open, setOpen] = useState(false);
 
+  // ✅ Use zodResolver instead of a custom async function
   const form = useForm<T>({
-    resolver: async (values) => {
-      try {
-        const result = formSchema.parse(values);
-        return { values: result, errors: {} };
-      } catch (err: any) {
-        if (err.formErrors?.fieldErrors) {
-          return { values: {}, errors: err.formErrors.fieldErrors };
-        }
-        return { values: {}, errors: {} };
-      }
-    },
+    resolver: zodResolver(formSchema),
     defaultValues,
   });
 
-  // Reset form on close
   useEffect(() => {
     if (!open) {
       form.reset(defaultValues);
