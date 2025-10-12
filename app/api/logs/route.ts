@@ -1,14 +1,17 @@
 import { NextResponse } from 'next/server'
 import { getLogs, clearLogs } from '@/lib/logger'
 
-export function GET() {
-  console.log('GET /api/logs called, returning', getLogs().length, 'entries')
-  return NextResponse.json(getLogs())
+export async function GET() {
+  const logs = await getLogs()
+  // eslint-disable-next-line no-console
+  console.log('GET /api/logs called, returning', logs.length, 'entries')
+  return NextResponse.json(logs)
 }
 
 export async function POST() {
   // Clear logs
+  // eslint-disable-next-line no-console
   console.log('POST /api/logs called - clearing logs')
-  clearLogs()
+  await clearLogs()
   return NextResponse.json({ ok: true })
 }
