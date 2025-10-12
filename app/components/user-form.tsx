@@ -28,7 +28,7 @@ export function UserForm({ form }: FormComponentProps) {
           <FormItem>
             <FormLabel>Name</FormLabel>
             <FormControl>
-              <Input placeholder="John Doe" {...field} />
+              <Input className="w-full" placeholder="John Doe" {...field} />
             </FormControl>
             <FormDescription>
               Enter full name.
@@ -48,7 +48,7 @@ export function UserForm({ form }: FormComponentProps) {
           <FormItem>
             <FormLabel>Email</FormLabel>
             <FormControl>
-              <Input type="email" placeholder="john@example.com" {...field} />
+              <Input className="w-full" type="email" placeholder="john@example.com" {...field} />
             </FormControl>
             <FormDescription>
               Enter email address.
@@ -68,7 +68,7 @@ export function UserForm({ form }: FormComponentProps) {
           <FormItem>
             <FormLabel>Phone Number</FormLabel>
             <FormControl>
-              <Input placeholder="04xxxxxxxx" {...field} />
+              <Input className="w-full" placeholder="04xxxxxxxx" {...field} />
             </FormControl>
             <FormDescription>
               Enter phone number in Australian phone number format.

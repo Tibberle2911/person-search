@@ -5,17 +5,13 @@ import { revalidatePath } from 'next/cache'
 import { User, userSchema } from './schemas'
 import { cache } from 'react'
 import { randomUUID } from 'crypto'
-import { Pool } from 'pg'
-
-// --- Database Connection (cached for hot reload in dev) ---
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-})
+import { pool } from '../../lib/db'
+import { logEvent } from '../../lib/logger'
 
 // --- Search Users ---
 export async function searchUsers(query: string): Promise<User[]> {
   console.log('Searching users with query:', query)
+  logEvent({ type: 'search.request', payload: { query } })
 
   const { rows } = await pool.query<User>(
     `SELECT id, name, phone_number AS "phoneNumber", email
@@ -27,11 +23,22 @@ export async function searchUsers(query: string): Promise<User[]> {
   )
 
   console.log('Search results:', rows)
+  logEvent({ type: 'search.response', payload: { count: rows.length } })
   return rows
 }
 
 // --- Add User ---
 export async function addUser(data: Omit<User, 'id'>): Promise<User> {
+  // Check uniqueness by name (case-insensitive)
+  const maybe = await pool.query<{ id: string }>(
+    `SELECT id FROM users WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+    [data.name]
+  )
+  const existing = (maybe && (maybe as any).rows) || []
+  if (existing.length > 0) {
+    throw new Error('User with this name already exists')
+  }
+
   const newId = randomUUID()
   const newUser = { ...data, id: newId }
   const validatedUser = userSchema.parse(newUser)
@@ -41,6 +48,9 @@ export async function addUser(data: Omit<User, 'id'>): Promise<User> {
      VALUES ($1, $2, $3, $4)`,
     [validatedUser.id, validatedUser.name, validatedUser.phoneNumber, validatedUser.email]
   )
+
+  logEvent({ type: 'create.request', payload: { id: validatedUser.id } })
+  logEvent({ type: 'create.response', payload: { id: validatedUser.id } })
 
   return validatedUser
 }
@@ -55,6 +65,8 @@ export async function deleteUser(id: string): Promise<void> {
 
   console.log(`User with id ${id} has been deleted.`)
   revalidatePath('/')
+  logEvent({ type: 'delete.request', payload: { id } })
+  logEvent({ type: 'delete.response', payload: { rowCount: result.rowCount } })
 }
 
 // --- Update User ---
@@ -68,6 +80,18 @@ export async function updateUser(
   const updated = { ...existing, ...data }
   const validatedUser = userSchema.parse(updated)
 
+  // If the name changed, ensure uniqueness (case-insensitive) excluding this user
+  if (data.name && data.name.toLowerCase() !== existing.name.toLowerCase()) {
+    const maybe = await pool.query<{ id: string }>(
+      `SELECT id FROM users WHERE LOWER(name) = LOWER($1) LIMIT 1`,
+      [data.name]
+    )
+    const found = (maybe && (maybe as any).rows) || []
+    if (found.length > 0 && found[0].id !== id) {
+      throw new Error('User with this name already exists')
+    }
+  }
+
   await pool.query(
     `UPDATE users
      SET name = $1, phone_number = $2, email = $3
@@ -77,6 +101,8 @@ export async function updateUser(
 
   console.log(`User with id ${id} has been updated.`)
   revalidatePath('/')
+  logEvent({ type: 'update.request', payload: { id } })
+  logEvent({ type: 'update.response', payload: { id } })
   return validatedUser
 }
 
@@ -89,5 +115,8 @@ export const getUserById = cache(async (id: string) => {
      LIMIT 1`,
     [id]
   )
-  return rows[0] || null
+  const result = rows[0] || null
+  logEvent({ type: 'get.request', payload: { id } })
+  logEvent({ type: 'get.response', payload: { found: !!result } })
+  return result
 })

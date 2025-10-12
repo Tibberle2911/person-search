@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import SearchInput from './search-input-cmd';
+import ClientOnly from './client-only';
 import UserCard from './user-card';
 import { getUserById } from '@/app/actions/actions';
 
@@ -13,7 +14,9 @@ export default async function UserSearch({ searchParams }: { searchParams: Promi
 
   return (
     <div className="space-y-6">
-      <SearchInput />
+      <ClientOnly>
+        <SearchInput />
+      </ClientOnly>
       {selectedUserId && (
         <Suspense fallback={<p>Loading user...</p>}>
           {user ? <UserCard user={user} /> : null}
