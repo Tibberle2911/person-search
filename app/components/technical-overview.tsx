@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 
-type LogEntry = { id: string; type: string; payload?: any; timestamp: string }
+type LogEntry = { id: string; type: string; payload?: unknown; timestamp: string }
 
 export function TechnicalOverview() {
   const [logs, setLogs] = useState<LogEntry[]>([])
@@ -15,7 +15,7 @@ export function TechnicalOverview() {
       const res = await fetch('/api/logs')
       const data = await res.json()
       setLogs(data)
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Failed to fetch logs', err)
     }
   }

@@ -15,7 +15,7 @@ export default function DatabasePage() {
           <CardContent>
             <p className="mb-4">The project uses a server-side validation schema defined with <code>zod</code>. Below is the exact validation schema used by the server actions (from <code>app/actions/schemas.ts</code>).</p>
 
-            <pre className="bg-muted p-3 rounded text-sm overflow-auto">{`import { z } from 'zod'
+            <pre className="bg-muted p-3 rounded text-sm overflow-auto">{`import { z } from "zod"
 
 export const userSchema = z.object({
   id: z.string(),
@@ -34,7 +34,7 @@ export type UserFormData = z.infer<typeof userFormSchema>
             <ul className="list-disc list-inside text-sm text-muted-foreground">
               <li><strong>id</strong>: string (UUID is recommended when persisting to the DB).</li>
               <li><strong>name</strong>: required string, minimum 2 characters. This prevents empty or one-letter names.</li>
-              <li><strong>email</strong>: required and must be a valid email address per Zod's email validator.</li>
+              <li><strong>email</strong>: required and must be a valid email address per Zod&apos;s email validator.</li>
               <li><strong>phoneNumber</strong>: validated against an Australian mobile pattern (<code>04########</code>) via regex.</li>
             </ul>
 
@@ -51,7 +51,7 @@ export type UserFormData = z.infer<typeof userFormSchema>
             <p className="text-sm text-muted-foreground">To enforce uniqueness (for example, unique name constraint used earlier in actions), create a DB-level constraint or a functional index for case-insensitive matches:</p>
             <pre className="bg-muted p-3 rounded text-sm mt-2">CREATE UNIQUE INDEX users_unique_lower_name ON users ((LOWER(name)));</pre>
 
-            <p className="mt-4 text-sm">If you'd like, I can also generate a corresponding Prisma model that mirrors this Zod schema and create a starter migration and seed script for you.</p>
+            <p className="mt-4 text-sm">If you&apos;d like, I can also generate a corresponding Prisma model that mirrors this Zod schema and create a starter migration and seed script for you.</p>
           </CardContent>
         </Card>
 

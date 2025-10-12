@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(users)
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error searching users:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -30,11 +30,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const created = await addUser(body)
     return NextResponse.json(created, { status: 201 })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Error creating user:', err)
-    if (err?.message === 'User with this name already exists') {
-      return NextResponse.json({ error: err.message }, { status: 409 })
+    const message = (err && typeof err === 'object' && 'message' in err)
+      ? String((err as { message?: unknown }).message)
+      : String(err)
+    if (message === 'User with this name already exists') {
+      return NextResponse.json({ error: message }, { status: 409 })
     }
-    return NextResponse.json({ error: err?.message || 'Invalid data' }, { status: 400 })
+    return NextResponse.json({ error: message || 'Invalid data' }, { status: 400 })
   }
 }

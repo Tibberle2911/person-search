@@ -34,7 +34,7 @@ export async function addUser(data: Omit<User, 'id'>): Promise<User> {
     `SELECT id FROM users WHERE LOWER(name) = LOWER($1) LIMIT 1`,
     [data.name]
   )
-  const existing = (maybe && (maybe as any).rows) || []
+  const existing = maybe.rows || []
   if (existing.length > 0) {
     throw new Error('User with this name already exists')
   }
@@ -86,7 +86,7 @@ export async function updateUser(
       `SELECT id FROM users WHERE LOWER(name) = LOWER($1) LIMIT 1`,
       [data.name]
     )
-    const found = (maybe && (maybe as any).rows) || []
+    const found = maybe.rows || []
     if (found.length > 0 && found[0].id !== id) {
       throw new Error('User with this name already exists')
     }

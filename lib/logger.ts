@@ -1,7 +1,7 @@
 type LogEntry = {
   id: string
   type: string
-  payload?: any
+  payload?: unknown
   timestamp: string
 }
 
@@ -12,12 +12,16 @@ const MAX_LOGS = 200
 // or when alias vs relative imports could create multiple module copies).
 const SHARED_NAMESPACE = '__PERSON_SEARCH_LOGS_v1'
 
-function getSharedStore(): { logs: LogEntry[] } {
-  const g: any = globalThis as any
-  if (!g[SHARED_NAMESPACE]) {
-    g[SHARED_NAMESPACE] = { logs: [] as LogEntry[] }
+interface SharedStore {
+  logs: LogEntry[]
+}
+
+function getSharedStore(): SharedStore {
+  const g = globalThis as unknown as Record<string, unknown>
+  if (!(SHARED_NAMESPACE in g)) {
+    (g as Record<string, unknown>)[SHARED_NAMESPACE] = { logs: [] as LogEntry[] }
   }
-  return g[SHARED_NAMESPACE]
+  return g[SHARED_NAMESPACE] as SharedStore
 }
 
 export function logEvent(entry: Omit<LogEntry, 'id' | 'timestamp'>) {
@@ -28,9 +32,9 @@ export function logEvent(entry: Omit<LogEntry, 'id' | 'timestamp'>) {
   if (store.logs.length > MAX_LOGS) store.logs.pop()
   // Best-effort console tracing
   try {
-    console.log(`logger.logEvent: ${record.type}`, { id: record.id })
-  } catch (e) {
-    /* noop */
+    console.log('logger.logEvent:', record.type, record.id)
+  } catch {
+    // ignore console failures in restricted runtimes
   }
 }
 
@@ -38,7 +42,9 @@ export function getLogs() {
   const store = getSharedStore()
   try {
     console.log('logger.getLogs called, count=', store.logs.length)
-  } catch (e) {}
+  } catch {
+    // noop
+  }
   return store.logs.slice()
 }
 
@@ -47,5 +53,7 @@ export function clearLogs() {
   store.logs.length = 0
   try {
     console.log('logger.clearLogs called')
-  } catch (e) {}
+  } catch {
+    // noop
+  }
 }
