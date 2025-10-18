@@ -1,0 +1,22 @@
+{
+  "name": "person-search-mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "pg": "^8.11.3",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}
