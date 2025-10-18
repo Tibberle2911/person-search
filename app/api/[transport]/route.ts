@@ -38,6 +38,14 @@ const tools = [
 ]
 
 export async function GET(request: NextRequest, context: unknown) {
+		const cors = {
+		'Access-Control-Allow-Origin': '*',
+		'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+		'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+	}
+		const json = <T,>(data: T, init?: ResponseInit) =>
+			NextResponse.json<T>(data, { ...(init || {}), headers: { ...(init?.headers || {}), ...cors } })
+
 	const transport = (context && typeof context === 'object' && 'params' in context)
 		? (context as { params?: unknown }).params
 		: undefined
@@ -45,18 +53,72 @@ export async function GET(request: NextRequest, context: unknown) {
 		? String((transport as Record<string, unknown>).transport)
 		: 'http'
 
-	return NextResponse.json({
+	// Optional: allow direct GET tool execution for read-only tools
+	const sp = request.nextUrl.searchParams
+	const tool = sp.get('tool') ?? sp.get('name')
+	if (tool) {
+		try {
+			switch (tool) {
+				case 'search_users': {
+					const query = sp.get('query') ?? ''
+					const results = await searchUsers(query)
+					return json(results)
+				}
+				case 'get_user_by_id': {
+					const id = sp.get('id') || ''
+					const parsed = idSchema.safeParse({ id })
+					if (!parsed.success) return json({ error: 'Invalid id' }, { status: 400 })
+					const user = await getUserById(parsed.data.id)
+					return user ? json(user) : json({ error: 'Not found' }, { status: 404 })
+				}
+				default:
+					return json({ error: `GET not supported for tool: ${tool}` }, { status: 405 })
+			}
+		} catch (err: unknown) {
+			const message = (err && typeof err === 'object' && 'message' in err)
+				? String((err as { message?: unknown }).message)
+				: String(err)
+			const status = message === 'User with this name already exists' ? 409 : 400
+			return json({ error: message }, { status })
+		}
+	}
+
+	return json({
 		name: 'person-search-mcp-http',
 		version: '0.1.0',
 		transport: transportName,
 		tools,
+		usage: {
+			get: [
+				{
+					tool: 'search_users',
+					example: '/api/http?tool=search_users&query=ali',
+				},
+				{
+					tool: 'get_user_by_id',
+					example: '/api/http?tool=get_user_by_id&id=<uuid>',
+				},
+			],
+			post: {
+				endpoint: '/api/http',
+				body: { tool: '<name>', input: {} },
+			},
+		},
 	})
 }
 
 export async function POST(request: NextRequest) {
+		const cors = {
+		'Access-Control-Allow-Origin': '*',
+		'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+		'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+	}
+		const json = <T,>(data: T, init?: ResponseInit) =>
+			NextResponse.json<T>(data, { ...(init || {}), headers: { ...(init?.headers || {}), ...cors } })
+
 	const body = await request.json().catch(() => null)
 	if (!body || typeof body !== 'object') {
-		return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
+		return json({ error: 'Invalid JSON body' }, { status: 400 })
 	}
 
 	const tool = 'tool' in body ? String((body as Record<string, unknown>).tool) : ''
@@ -67,39 +129,50 @@ export async function POST(request: NextRequest) {
 			case 'search_users': {
 				const { query } = searchSchema.parse(input)
 				const results = await searchUsers(query)
-				return NextResponse.json(results)
+						return json(results)
 			}
 			case 'get_user_by_id': {
 				const { id } = idSchema.parse(input)
 				const user = await getUserById(id)
-				if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-				return NextResponse.json(user)
+						if (!user) return json({ error: 'Not found' }, { status: 404 })
+						return json(user)
 			}
 			case 'add_user': {
 				const data = userFormSchema.parse(input)
 				const created = await addUser(data)
-				return NextResponse.json(created, { status: 201 })
+						return json(created, { status: 201 })
 			}
 			case 'update_user': {
 				const parsed = updateSchema.parse(input)
 				const { id, ...rest } = parsed
 				const updated = await updateUser(id, rest)
-				return NextResponse.json(updated)
+						return json(updated)
 			}
 			case 'delete_user': {
 				const { id } = idSchema.parse(input)
 				await deleteUser(id)
-				return NextResponse.json({ ok: true })
+						return json({ ok: true })
 			}
 			default:
-				return NextResponse.json({ error: `Unknown tool: ${tool}` }, { status: 400 })
+						return json({ error: `Unknown tool: ${tool}` }, { status: 400 })
 		}
 	} catch (err: unknown) {
 		const message = (err && typeof err === 'object' && 'message' in err)
 			? String((err as { message?: unknown }).message)
 			: String(err)
 		const status = message === 'User with this name already exists' ? 409 : 400
-		return NextResponse.json({ error: message }, { status })
+				return json({ error: message }, { status })
 	}
 }
+
+		export function OPTIONS() {
+			return new NextResponse(null, {
+				status: 204,
+				headers: {
+					'Access-Control-Allow-Origin': '*',
+					'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+					'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+				},
+			})
+		}
 
