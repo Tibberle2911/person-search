@@ -1,21 +1,12 @@
 import type { NextConfig } from "next";
 import path from 'path';
+import fs from 'fs';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  experimental: {
-    // Enable turbo for both dev and build
-    turbo: {
-      rules: {
-        // Include the default rules
-        // This ensures compatibility with existing webpack configurations
-        include: ['**/*'],
-      },
-      // Resolve modules using Node.js resolution
-      resolveAlias: {
-        // Add any custom aliases here if needed
-      }
-    }
+  // Configure Turbopack root to this workspace and silence inferred root warnings
+  turbopack: {
+    root: __dirname,
   },
   webpack: (config, { isServer }) => {
     config.resolve.alias = {
@@ -24,6 +15,8 @@ const nextConfig: NextConfig = {
     };
     return config;
   },
+  // Ensure Next traces files relative to this project (OneDrive nested folder can confuse it)
+  outputFileTracingRoot: __dirname,
   pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
   typescript: {
     // !! WARN !!
