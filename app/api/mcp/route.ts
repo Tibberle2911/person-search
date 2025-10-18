@@ -112,13 +112,18 @@ export async function POST(req: Request) {
 
 	// Use handler; if 404, provide minimal fallback for initialize/tools/call
 	const forwarded = new Request(req.url, { method: 'POST', headers: hdrs, body })
-	let res = await handler(forwarded)
-	if (res.status === 404) {
+		const res = await handler(forwarded)
+		if (res.status === 404) {
 		try {
-			const payload = body ? JSON.parse(body) as any : null
-			if (payload?.jsonrpc === '2.0') {
-				const id = 'id' in payload ? payload.id : null
-				if (payload.method === 'initialize') {
+				const payloadUnknown: unknown = body ? JSON.parse(body) : null
+				if (
+					payloadUnknown &&
+					typeof payloadUnknown === 'object' &&
+					(payloadUnknown as Record<string, unknown>).jsonrpc === '2.0'
+				) {
+					const payload = payloadUnknown as { jsonrpc: '2.0'; id?: unknown; method?: unknown }
+					const id = 'id' in payload ? (payload as Record<string, unknown>).id : null
+					if (payload.method === 'initialize') {
 					const result = { protocolVersion: '2024-11-05', capabilities: { tools: {
 						search_users: { description: 'Search users' },
 						get_user_by_id: { description: 'Get user by id' },
@@ -127,7 +132,7 @@ export async function POST(req: Request) {
 						delete_user: { description: 'Delete user' },
 					} } }
 					const cors = new Headers({ 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', Vary: 'Origin, Accept' })
-					return new Response(JSON.stringify({ jsonrpc: '2.0', id, result }), { status: 200, headers: cors })
+						return new Response(JSON.stringify({ jsonrpc: '2.0', id: id ?? null, result }), { status: 200, headers: cors })
 				}
 			}
 		} catch { /* ignore */ }
