@@ -1,178 +1,90 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { createMcpHandler } from 'mcp-handler'
 import { z } from 'zod'
 import { searchUsers, addUser, updateUser, deleteUser, getUserById } from '@/app/actions/actions'
 import { userFormSchema } from '@/app/actions/schemas'
 
-// Minimal MCP-like HTTP transport exposing tools via POST { tool, input }
+// Build a proper MCP server using vercel/mcp-handler and reuse existing actions.
+const handler = createMcpHandler(
+  (server) => {
+    server.tool(
+      'search_users',
+      'Search users by name prefix (case-insensitive)',
+      { query: z.string().default('') },
+      async ({ query }) => {
+        const results = await searchUsers(query)
+        return { content: [{ type: 'text', text: JSON.stringify(results) }] }
+      }
+    )
 
-const searchSchema = z.object({ query: z.string().min(1) })
-const idSchema = z.object({ id: z.string().min(1) })
-const updateSchema = userFormSchema.partial().merge(idSchema)
+    server.tool(
+      'get_user_by_id',
+      'Get a single user by id',
+      { id: z.string().min(1) },
+      async ({ id }) => {
+        const user = await getUserById(id)
+        if (!user) {
+          throw new Error('Not found')
+        }
+        return { content: [{ type: 'text', text: JSON.stringify(user) }] }
+      }
+    )
 
-const tools = [
-	{
-		name: 'search_users',
-		description: 'Search users by name prefix (case-insensitive)',
-		input: '{ query: string }',
-	},
-	{
-		name: 'get_user_by_id',
-		description: 'Get a single user by id',
-		input: '{ id: string }',
-	},
-	{
-		name: 'add_user',
-		description: 'Create a new user (name unique, case-insensitive)',
-		input: 'UserFormData (name, email, phoneNumber)',
-	},
-	{
-		name: 'update_user',
-		description: 'Update user by id (name unique, case-insensitive)',
-		input: '{ id: string } & Partial<UserFormData>',
-	},
-	{
-		name: 'delete_user',
-		description: 'Delete user by id',
-		input: '{ id: string }',
-	},
-]
+    server.tool(
+      'add_user',
+      'Create a new user (name unique, case-insensitive)',
+      userFormSchema.shape,
+      async (input) => {
+        const created = await addUser(input as typeof userFormSchema['_type'])
+        return { content: [{ type: 'text', text: JSON.stringify(created) }] }
+      }
+    )
 
-export async function GET(request: NextRequest, context: unknown) {
-		const cors = {
-		'Access-Control-Allow-Origin': '*',
-		'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-		'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-	}
-		const json = <T,>(data: T, init?: ResponseInit) =>
-			NextResponse.json<T>(data, { ...(init || {}), headers: { ...(init?.headers || {}), ...cors } })
+    const updateShape = {
+      id: z.string().min(1),
+      name: userFormSchema.shape.name.optional(),
+      email: userFormSchema.shape.email.optional(),
+      phoneNumber: userFormSchema.shape.phoneNumber.optional(),
+    }
+    server.tool(
+      'update_user',
+      'Update user by id (name unique, case-insensitive)',
+      updateShape,
+      async (args) => {
+        const { id, ...rest } = args as { id: string } & Partial<typeof userFormSchema['_type']>
+        const updated = await updateUser(id, rest)
+        return { content: [{ type: 'text', text: JSON.stringify(updated) }] }
+      }
+    )
 
-	const transport = (context && typeof context === 'object' && 'params' in context)
-		? (context as { params?: unknown }).params
-		: undefined
-	const transportName = transport && typeof transport === 'object' && transport !== null && 'transport' in transport
-		? String((transport as Record<string, unknown>).transport)
-		: 'http'
+    server.tool(
+      'delete_user',
+      'Delete user by id',
+      { id: z.string().min(1) },
+      async ({ id }) => {
+        await deleteUser(id)
+        return { content: [{ type: 'text', text: 'ok' }] }
+      }
+    )
+  },
+  // Optional server options (e.g. capabilities)
+  {
+    capabilities: {
+      tools: {
+        search_users: { description: 'Search users' },
+        get_user_by_id: { description: 'Get user by id' },
+        add_user: { description: 'Add user' },
+        update_user: { description: 'Update user' },
+        delete_user: { description: 'Delete user' },
+      },
+    },
+  },
+  // Runtime options
+  {
+    basePath: '/api',
+    maxDuration: 60,
+    verboseLogs: true,
+  }
+)
 
-	// Optional: allow direct GET tool execution for read-only tools
-	const sp = request.nextUrl.searchParams
-	const tool = sp.get('tool') ?? sp.get('name')
-	if (tool) {
-		try {
-			switch (tool) {
-				case 'search_users': {
-					const query = sp.get('query') ?? ''
-					const results = await searchUsers(query)
-					return json(results)
-				}
-				case 'get_user_by_id': {
-					const id = sp.get('id') || ''
-					const parsed = idSchema.safeParse({ id })
-					if (!parsed.success) return json({ error: 'Invalid id' }, { status: 400 })
-					const user = await getUserById(parsed.data.id)
-					return user ? json(user) : json({ error: 'Not found' }, { status: 404 })
-				}
-				default:
-					return json({ error: `GET not supported for tool: ${tool}` }, { status: 405 })
-			}
-		} catch (err: unknown) {
-			const message = (err && typeof err === 'object' && 'message' in err)
-				? String((err as { message?: unknown }).message)
-				: String(err)
-			const status = message === 'User with this name already exists' ? 409 : 400
-			return json({ error: message }, { status })
-		}
-	}
-
-	return json({
-		name: 'person-search-mcp-http',
-		version: '0.1.0',
-		transport: transportName,
-		tools,
-		usage: {
-			get: [
-				{
-					tool: 'search_users',
-					example: '/api/http?tool=search_users&query=ali',
-				},
-				{
-					tool: 'get_user_by_id',
-					example: '/api/http?tool=get_user_by_id&id=<uuid>',
-				},
-			],
-			post: {
-				endpoint: '/api/http',
-				body: { tool: '<name>', input: {} },
-			},
-		},
-	})
-}
-
-export async function POST(request: NextRequest) {
-		const cors = {
-		'Access-Control-Allow-Origin': '*',
-		'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-		'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-	}
-		const json = <T,>(data: T, init?: ResponseInit) =>
-			NextResponse.json<T>(data, { ...(init || {}), headers: { ...(init?.headers || {}), ...cors } })
-
-	const body = await request.json().catch(() => null)
-	if (!body || typeof body !== 'object') {
-		return json({ error: 'Invalid JSON body' }, { status: 400 })
-	}
-
-	const tool = 'tool' in body ? String((body as Record<string, unknown>).tool) : ''
-	const input = 'input' in body ? (body as Record<string, unknown>).input : undefined
-
-	try {
-		switch (tool) {
-			case 'search_users': {
-				const { query } = searchSchema.parse(input)
-				const results = await searchUsers(query)
-						return json(results)
-			}
-			case 'get_user_by_id': {
-				const { id } = idSchema.parse(input)
-				const user = await getUserById(id)
-						if (!user) return json({ error: 'Not found' }, { status: 404 })
-						return json(user)
-			}
-			case 'add_user': {
-				const data = userFormSchema.parse(input)
-				const created = await addUser(data)
-						return json(created, { status: 201 })
-			}
-			case 'update_user': {
-				const parsed = updateSchema.parse(input)
-				const { id, ...rest } = parsed
-				const updated = await updateUser(id, rest)
-						return json(updated)
-			}
-			case 'delete_user': {
-				const { id } = idSchema.parse(input)
-				await deleteUser(id)
-						return json({ ok: true })
-			}
-			default:
-						return json({ error: `Unknown tool: ${tool}` }, { status: 400 })
-		}
-	} catch (err: unknown) {
-		const message = (err && typeof err === 'object' && 'message' in err)
-			? String((err as { message?: unknown }).message)
-			: String(err)
-		const status = message === 'User with this name already exists' ? 409 : 400
-				return json({ error: message }, { status })
-	}
-}
-
-		export function OPTIONS() {
-			return new NextResponse(null, {
-				status: 204,
-				headers: {
-					'Access-Control-Allow-Origin': '*',
-					'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-					'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-				},
-			})
-		}
+export { handler as GET, handler as POST }
 

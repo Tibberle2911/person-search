@@ -41,7 +41,6 @@ async function ensureTable() {
     `)
   } catch (err) {
     // don't throw - table creation is best-effort
-    // eslint-disable-next-line no-console
     console.warn('logger.ensureTable failed', String(err))
   }
 }
@@ -55,7 +54,6 @@ export function logEvent(entry: Omit<LogEntry, 'id' | 'timestamp'>) {
 
   // Console tracing (best effort)
   try {
-    // eslint-disable-next-line no-console
     console.log('logger.logEvent:', record.type, record.id)
   } catch {
     // noop
@@ -71,7 +69,6 @@ export function logEvent(entry: Omit<LogEntry, 'id' | 'timestamp'>) {
           [record.id, record.type, record.payload ? JSON.stringify(record.payload) : null, record.timestamp]
         )
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.warn('logger.logEvent DB insert failed', String(err))
       }
     })()
@@ -81,7 +78,6 @@ export function logEvent(entry: Omit<LogEntry, 'id' | 'timestamp'>) {
 export async function getLogs(): Promise<LogEntry[]> {
   const store = getSharedStore()
   try {
-    // eslint-disable-next-line no-console
     console.log('logger.getLogs called, count=', store.logs.length)
   } catch {
     // noop
@@ -103,7 +99,6 @@ export async function getLogs(): Promise<LogEntry[]> {
     }))
   } catch (err) {
     // fallback to in-memory when DB read fails
-    // eslint-disable-next-line no-console
     console.warn('logger.getLogs DB read failed, falling back to memory', String(err))
     return store.logs.slice()
   }
@@ -113,7 +108,6 @@ export async function clearLogs(): Promise<void> {
   const store = getSharedStore()
   store.logs.length = 0
   try {
-    // eslint-disable-next-line no-console
     console.log('logger.clearLogs called')
   } catch {
     // noop
@@ -124,7 +118,6 @@ export async function clearLogs(): Promise<void> {
     await ensureTable()
     await pool.query(`DELETE FROM logs`)
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn('logger.clearLogs DB delete failed', String(err))
   }
 }
