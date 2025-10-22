@@ -1,11 +1,16 @@
 {
-  "servers": {
-    "shadcn": {
-      "command": "npx",
-      "args": [
-        "shadcn@latest",
-        "mcp"
-      ]
-    }
-  }
+	"servers": {
+		"shadcn": {
+			"command": "npx",
+			"args": [
+				"shadcn@latest",
+				"mcp"
+			],
+			"type": "stdio"
+		},
+		"person-search-mcp": {
+			"url": "http://localhost:3002/api/mcp",
+			"type": "http"
+		}
+	},
 }

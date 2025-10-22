@@ -8,6 +8,26 @@ import { randomUUID } from 'crypto'
 import { pool } from '../../lib/db'
 import { logEvent } from '../../lib/logger'
 
+// --- List Users (all, with pagination) ---
+export async function listUsers(opts?: { offset?: number; limit?: number }): Promise<User[]> {
+  const offset = Math.max(0, opts?.offset ?? 0)
+  const limit = Math.min(10000, Math.max(1, opts?.limit ?? 1000))
+
+  logEvent({ type: 'list.request', payload: { offset, limit } })
+
+  const { rows } = await pool.query<User>(
+    `SELECT id, name, phone_number AS "phoneNumber", email
+     FROM users
+     ORDER BY name
+     OFFSET $1
+     LIMIT $2`,
+    [offset, limit]
+  )
+
+  logEvent({ type: 'list.response', payload: { count: rows.length } })
+  return rows
+}
+
 // --- Search Users ---
 export async function searchUsers(query: string): Promise<User[]> {
   console.log('Searching users with query:', query)
