@@ -53,7 +53,6 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$auth$2e$ts__$5b$middleware$2
 ;
 const config = {
     matcher: [
-        '/database',
         '/api/people/:path*'
     ]
 };

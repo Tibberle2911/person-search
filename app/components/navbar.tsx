@@ -28,8 +28,9 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-2">
             <Link href="/" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:text-primary">Home</Link>
             <Link href="/about" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:text-primary">About</Link>
+            <Link href="/auth-setup" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:text-primary">OAuth setup</Link>
+            <Link href="/security" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:text-primary">Security</Link>
             <Link href="/github" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:text-primary">GitHub</Link>
-            <Link href="/database" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:text-primary">Database</Link>
             <div className="mx-2 h-5 w-px bg-border" />
             <AuthStatus />
             <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
@@ -53,8 +54,9 @@ export default function Navbar() {
         <div className="px-4 pt-2 pb-4 space-y-1">
           <Link href="/" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary">Home</Link>
           <Link href="/about" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary">About</Link>
+          <Link href="/auth-setup" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary">OAuth setup</Link>
+          <Link href="/security" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary">Security</Link>
           <Link href="/github" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary">GitHub</Link>
-          <Link href="/database" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary">Database</Link>
           <div className="px-3 py-2">
             <AuthStatus />
           </div>

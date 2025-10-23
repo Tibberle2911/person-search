@@ -2,9 +2,9 @@
 
 ## Description
 
-Person Search is a Next.js application upgraded to leverage **Next.js 15.1** and **React 19**. It demonstrates advanced search functionality using Next.js Server Components and react-select's `AsyncSelect` component. Users can search for people from a pre-populated list and view detailed information about the selected person.
+Person Search is a Next.js application built on **Next.js 15** and **React 19**. I demonstrate advanced search with Server Components and `react-select`'s `AsyncSelect`. On top of that, I implement production‑ready authentication with **NextAuth v5 (Google OAuth)**, session‑protected CRUD, and cookie‑less agent access via per‑user API keys to an **MCP (Model Context Protocol)** endpoint.
 
-The upgrade to Next.js 15.1 introduced significant breaking changes, including a shift in how `params` and `searchParams` are handled, leading to a complete redesign of the `user-search` component to fully align with Server Components.
+With Next.js 15, `params` and `searchParams` handling changed; I redesigned the server component flow to align with Server Components.
 
 ## Features
 
@@ -13,57 +13,123 @@ The upgrade to Next.js 15.1 introduced significant breaking changes, including a
 - Server-rendered and hydrated client-side components
 - Single data fetch for improved performance
 - Responsive design using Tailwind CSS
-- Accessibility-focused UI components from Radix UI
+- Accessibility-focused UI components from Radix UI / shadcn/ui
 - Custom fonts (Geist Sans and Geist Mono)
 - Improved type safety with TypeScript
 - Modular and reusable component architecture
+- Authentication with NextAuth v5 (Google)
+- Per-user API keys for MCP over HTTP JSON-RPC
 
 ## Technologies Used
 
-- **Next.js 15.1** - React framework for building modern web applications
+- **Next.js 15** - React framework for building modern web applications
 - **React 19** - Latest React version with concurrent rendering improvements
 - **TypeScript** - Strongly-typed superset of JavaScript
 - **Node.js 20.17.0** - Required for compatibility with Next.js 15.1
 - **Tailwind CSS** - Utility-first CSS framework
 - **Radix UI** - Collection of accessible, unstyled UI components
+- **shadcn/ui** - Headless UI primitives styled with Tailwind
 - **React Hook Form** - Performant and flexible forms library
 - **Zod** - TypeScript-first schema declaration and validation library
 - **React Select** - Flexible Select Input control for React
 - **Sonner** - Lightweight toast notifications for React
+- **NextAuth v5** - Authentication (Google OAuth)
+- **Postgres** - Persistence for per‑user MCP API keys
 
 ### Minimum Node.js Version
 
-The application has been tested with **Node.js 20.17.0**. Features such as ECMAScript modules and async server components require Node.js 20 or newer, making this the minimum requirement.
+I use **Node.js 20.17.0+**. Async Server Components and modern tooling require Node 20 or newer.
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 20.17.0 or newer
-- npm
+- pnpm (preferred)
 
 ### Installation
 
 1. Clone the repository:
 
-   ```bash
-   git clone https://github.com/gocallum/person-search.git
-   cd person-search
-   ```
+  ```bash
+  git clone https://github.com/Tibberle2911/person-search.git
+  cd person-search
+  ```
 
 2. Install dependencies:
 
-   ```bash
-   npm install
-   ```
+  ```bash
+  pnpm install
+  ```
 
-3. Create a `.env.local` file in the root directory and add any necessary environment variables.
+3. Create a `.env.local` file in the root directory and add the env vars listed below.
 
 ### Running the Development Server
 
 ```bash
-npm run dev
+pnpm dev
 ```
+
+---
+
+## OAuth (Google) implementation
+
+I implement authentication with NextAuth v5 using the Google provider. The key pieces are:
+
+- `auth.ts`: I configure NextAuth, register the Google provider, accept the secret from `AUTH_SECRET` or `NEXTAUTH_SECRET`, and enable `trustHost: true`.
+- `app/api/auth/[...nextauth]/route.ts`: I export `GET`/`POST` from the NextAuth handlers and force `runtime = 'nodejs'` with `dynamic = 'force-dynamic'` to avoid static optimization.
+
+Why `trustHost`? On Vercel, preview and production URLs differ. By enabling `trustHost`, I avoid hard‑coding `AUTH_URL` for each environment.
+
+### Environment variables
+
+I set these for local dev and Vercel (Project Settings → Environment Variables):
+
+```bash
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+# Either is accepted (use one):
+AUTH_SECRET=...            # recommended
+# NEXTAUTH_SECRET=...      # alternative
+
+# Optional but recommended (persists API keys)
+DATABASE_URL=postgres://user:pass@host:5432/db
+```
+
+Tip: I generate a strong secret (32+ random bytes base64) and add it to both Preview and Production on Vercel.
+
+### Configure Google OAuth
+
+1) In Google Cloud Console, I create a project and enable “Google Identity Services”.
+2) I create an OAuth 2.0 Client ID (type: Web application).
+3) I add authorized redirect URIs for each environment:
+
+- Local: `http://localhost:3000/api/auth/callback/google`
+- Vercel: `https://YOUR_DOMAIN/api/auth/callback/google`
+
+4) I copy the Client ID/Secret into my environment variables.
+
+### Sessions, JWT, and scopes
+
+- NextAuth uses stateless JWT sessions by default; I keep this unless I need DB sessions.
+- Google provider scopes default to `openid email profile`. I can extend scopes if needed.
+- NextAuth manages CSRF and secure cookies; in production, cookies are set with secure flags automatically.
+
+### Verify the setup
+
+```bash
+pnpm dev
+# Then in the browser:
+# - Visit /api/auth/providers → Google should appear
+# - Complete sign-in → Visit /api/auth/session → session JSON should be present
+```
+
+### Troubleshooting
+
+- 500 “MissingSecret”: I set `AUTH_SECRET` (or `NEXTAUTH_SECRET`).
+- Redirect URI mismatch: I add the exact callback(s) to Google OAuth Client.
+- Invalid credentials: I reissue the Client Secret and update env vars.
+- No provider listed: I confirm `GOOGLE_CLIENT_ID/SECRET` are present and the server restarted.
 
 ## How It Works (Next.js 15.1 & React 19)
 
@@ -118,6 +184,30 @@ npm run dev
    - Some hydration warnings may occur due to external browser extensions like Grammarly or differences in runtime environments. Suppression flags have been added, but further testing is recommended.
 
 ---
+
+## Security and protected routes
+
+- Middleware protects `'/api/people/*'` so CRUD requires a signed‑in session.
+- MCP endpoint at `'/api/mcp'` authorizes either by session cookies or per‑user API keys.
+- I accept tokens via headers or query string:
+  - `Authorization: Bearer <token>`
+  - `x-api-key: <token>`
+  - `?api_key=<token>` (for clients that can’t set headers)
+
+### MCP keys (per‑user)
+
+- I persist keys in Postgres with a `revoked` flag (fallback to in‑memory locally).
+- Manage keys with:
+  - `GET /api/mcp/session-key` — issue/return a key; support `?rotate=1` to rotate
+  - `DELETE /api/mcp/session-key` — revoke all keys for the signed‑in user
+  - `GET /api/mcp/info` — returns metadata and a masked preview of the current key
+
+### MCP transport and JSON‑RPC
+
+- MCP runs over HTTP JSON‑RPC at `/api/mcp`.
+- I enable CORS to allow `Authorization` and `x-api-key` headers so agents can call cross‑origin.
+- I return JSON‑RPC error objects with HTTP 200 (agents can always parse a body).
+- I normalize results to `result.content` with typed parts (`text` or `json`).
 
 ### Updated Project Structure
 
@@ -270,5 +360,5 @@ This project is open source and available under the [MIT License](LICENSE).
 ## Contact
 
 Callum Bir - [@callumbir](https://twitter.com/callumbir)  
-Project Link: [https://github.com/gocallum/person-search](https://github.com/gocallum/person-search)  
+Project Link: [https://github.com/Tibberle2911/person-search](https://github.com/Tibberle2911/person-search)
 

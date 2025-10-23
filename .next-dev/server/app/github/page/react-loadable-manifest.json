@@ -1,0 +1,9 @@
+{
+  "[project]/app/components/auth-status.tsx [app-client] (ecmascript, next/dynamic entry)": {
+    "id": "[project]/app/components/auth-status.tsx [app-client] (ecmascript, next/dynamic entry)",
+    "files": [
+      "static/chunks/app_components_auth-status_tsx_dcebfa0e._.js",
+      "static/chunks/app_components_auth-status_tsx_a4d59d18._.js"
+    ]
+  }
+}

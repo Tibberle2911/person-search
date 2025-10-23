@@ -731,6 +731,11 @@ body {
   margin-bottom: .25rem;
 }
 
+.mx-1 {
+  margin-left: .25rem;
+  margin-right: .25rem;
+}
+
 .-ml-4 {
   margin-left: -1rem;
 }
@@ -813,6 +818,10 @@ body {
 
 .mt-auto {
   margin-top: auto;
+}
+
+.ml-6 {
+  margin-left: 1.5rem;
 }
 
 .block {
