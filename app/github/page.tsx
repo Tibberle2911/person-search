@@ -19,7 +19,7 @@ export default function GithubPage() {
               per-user API keys for MCP access, and protected CRUD routes.
             </p>
             <Button asChild>
-              <Link href="https://github.com/Tibberle2911/person-search/tree/rollback-mcp-fix" target="_blank" rel="noopener noreferrer">
+              <Link href="https://github.com/Tibberle2911/person-search/tree/rollback-4c416b5" target="_blank" rel="noopener noreferrer">
                 <Github className="mr-2 h-4 w-4" /> View on GitHub
               </Link>
             </Button>

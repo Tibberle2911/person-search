@@ -1,6 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
 
 export const dynamic = "force-dynamic"
 
@@ -31,7 +29,7 @@ export default function AuthSetupPage() {
           <CardContent>
             <ul className="list-disc list-inside text-sm text-muted-foreground">
               <li><code>auth.ts</code>: I configure NextAuth and export <code>{`{ handlers, signIn, signOut, auth }`}</code>, using the Google provider and secret fallback.</li>
-              <li><code>app/api/auth/[...nextauth]/route.ts</code>: I re-export <code>GET</code>/<code>POST</code> from <code>handlers</code> and force <code>runtime = 'nodejs'</code> with <code>dynamic = 'force-dynamic'</code>.</li>
+              <li><code>app/api/auth/[...nextauth]/route.ts</code>: I re-export <code>GET</code>/<code>POST</code> from <code>handlers</code> and force <code>runtime = &apos;nodejs&apos;</code> with <code>dynamic = &apos;force-dynamic&apos;</code>.</li>
             </ul>
           </CardContent>
         </Card>

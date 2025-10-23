@@ -1,6 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
 
 export default function AboutPage() {
   return (
@@ -34,7 +32,7 @@ export default function AboutPage() {
           <CardContent>
             <ul className="list-disc list-inside text-sm text-muted-foreground">
               <li><code>auth.ts</code>: I configure NextAuth, Google provider, secret fallback, and <code>trustHost</code>; export <code>{`{ handlers, signIn, signOut, auth }`}</code>.</li>
-              <li><code>app/api/auth/[...nextauth]/route.ts</code>: I re-export <code>GET</code>/<code>POST</code> from <code>handlers</code>; I set <code>runtime = 'nodejs'</code> and <code>dynamic = 'force-dynamic'</code>.</li>
+              <li><code>app/api/auth/[...nextauth]/route.ts</code>: I re-export <code>GET</code>/<code>POST</code> from <code>handlers</code>; I set <code>runtime = &apos;nodejs&apos;</code> and <code>dynamic = &apos;force-dynamic&apos;</code>.</li>
               <li><code>middleware.ts</code>: I protect <code>/api/people/*</code>; I keep MCP auth inside the route to allow header-based keys.</li>
               <li><code>lib/mcpKeys.ts</code>: I store, validate, and revoke per-user API keys (Postgres with in-memory fallback).</li>
             </ul>
