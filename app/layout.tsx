@@ -5,6 +5,7 @@ import "./globals.css";
 import Navbar from "./components/navbar";
 import Footer from "./components/footer";
 import { ThemeProvider } from "@/components/theme-provider";
+import AppSessionProvider from './components/session-provider'
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,15 +40,16 @@ export default function RootLayout({
             disableTransitionOnChange
           >
 
-        <Navbar />
-        <main className="flex-grow">
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {children}
-          </div>
-        </main>
-        <Toaster />
-
-        <Footer />
+        <AppSessionProvider>
+          <Navbar />
+          <main className="flex-grow">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+              {children}
+            </div>
+          </main>
+          <Toaster />
+          <Footer />
+        </AppSessionProvider>
         </ThemeProvider>
 
     </body>

@@ -1,17 +1,18 @@
 import UserSearch from './components/user-search'
-import { TechnicalOverview } from './components/technical-overview'
 import { UserDialog } from './components/user-dialog'
+import McpConnect from './components/mcp-connect'
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ userId?: string }> }) {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">User Search</h1>
-        <UserSearch searchParams={searchParams} />
-        <div className="mt-6">
+      <main className="flex-grow">
+        <div className="flex flex-col gap-6">
+          <h1 className="text-2xl sm:text-3xl font-bold">User Search</h1>
+          <p className="text-sm text-muted-foreground">Please login to use this application.</p>
+          <UserSearch searchParams={searchParams} />
           <UserDialog />
+          <McpConnect />
         </div>
-        <TechnicalOverview />
       </main>
     </div>
   )

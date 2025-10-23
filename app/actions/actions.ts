@@ -7,9 +7,22 @@ import { cache } from 'react'
 import { randomUUID } from 'crypto'
 import { pool } from '../../lib/db'
 import { logEvent } from '../../lib/logger'
+import { auth } from '@/auth'
+import { isMcpAuthorized } from '@/lib/authz'
+
+async function requireAuth() {
+  // Allow MCP-authorized calls (validated in the MCP route) to bypass user session checks
+  if (isMcpAuthorized()) return { user: { id: 'mcp', name: 'MCP Agent' } }
+  const session = await auth()
+  if (!session || !session.user) {
+    throw new Error('Unauthorized')
+  }
+  return session
+}
 
 // --- List Users (all, with pagination) ---
 export async function listUsers(opts?: { offset?: number; limit?: number }): Promise<User[]> {
+  await requireAuth()
   const offset = Math.max(0, opts?.offset ?? 0)
   const limit = Math.min(10000, Math.max(1, opts?.limit ?? 1000))
 
@@ -30,6 +43,7 @@ export async function listUsers(opts?: { offset?: number; limit?: number }): Pro
 
 // --- Search Users ---
 export async function searchUsers(query: string): Promise<User[]> {
+  await requireAuth()
   console.log('Searching users with query:', query)
   logEvent({ type: 'search.request', payload: { query } })
 
@@ -49,6 +63,7 @@ export async function searchUsers(query: string): Promise<User[]> {
 
 // --- Add User ---
 export async function addUser(data: Omit<User, 'id'>): Promise<User> {
+  await requireAuth()
   // Check uniqueness by name (case-insensitive)
   const maybe = await pool.query<{ id: string }>(
     `SELECT id FROM users WHERE LOWER(name) = LOWER($1) LIMIT 1`,
@@ -77,6 +92,7 @@ export async function addUser(data: Omit<User, 'id'>): Promise<User> {
 
 // --- Delete User ---
 export async function deleteUser(id: string): Promise<void> {
+  await requireAuth()
   const result = await pool.query(`DELETE FROM users WHERE id = $1`, [id])
 
   if (result.rowCount === 0) {
@@ -94,6 +110,7 @@ export async function updateUser(
   id: string,
   data: Partial<Omit<User, 'id'>>
 ): Promise<User> {
+  await requireAuth()
   const existing = await getUserById(id)
   if (!existing) throw new Error(`User with id ${id} not found`)
 

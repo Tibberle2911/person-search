@@ -21,7 +21,7 @@ export default function SearchInput() {
   }, [])
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div className="w-full max-w-full md:max-w-2xl">
       <SearchCommand<User>
         onSearch={handleSearch}
         onItemSelect={handleSelect}

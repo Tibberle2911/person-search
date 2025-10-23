@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { addUser, updateUser, deleteUser, searchUsers, getUserById, listUsers } from '@/app/actions/actions'
 import { userSchema, userFormSchema } from '@/app/actions/schemas'
+import { auth } from '@/auth'
+import { withMcpAuth } from '@/lib/authz'
+import { validateKey } from '@/lib/mcpKeys'
 
 // Minimal MCP-over-HTTP handler inspired by vercel/mcp-handler roll-dice pattern
 // Supports JSON-RPC 2.0 methods: initialize, tools/list, tools/call
@@ -122,8 +125,9 @@ const tools: Tool[] = [
 
 function withCors(res: NextResponse) {
   res.headers.set('Access-Control-Allow-Origin', '*')
-  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Accept')
-  res.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  // Allow auth headers for headless agents calling across origins
+  res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-API-Key')
+  res.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS, GET')
   res.headers.set('Access-Control-Expose-Headers', 'Content-Type')
   return res
 }
@@ -144,6 +148,10 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    // AuthZ: prefer session cookie; fall back to API key in headers for headless agents
+    const session = await auth()
+    const isApiKeyValid = checkApiKey(req)
+    const isAuthorized = !!session?.user || isApiKeyValid
     const contentType = req.headers.get('content-type') || ''
     const isJson = contentType.includes('application/json')
     let body: unknown = null
@@ -160,8 +168,15 @@ export async function POST(req: NextRequest) {
 
     // Adapter: simple { tool, input } shape
     if (body && typeof body === 'object' && 'tool' in body) {
+      if (!session?.user && !isApiKeyValid) {
+        return withCors(NextResponse.json({ jsonrpc: '2.0', id: null, error: { code: -32001, message: 'Unauthorized' } }))
+      }
       const { tool, input } = body as { tool?: string; input?: unknown }
       if (!tool) throw new Error('Missing tool')
+      // If authorized via API key, run within MCP auth context so server actions can proceed
+      if (isApiKeyValid && !session?.user) {
+        return await withMcpAuth(() => handleToolsCall({ id: null, name: tool, args: input ?? {} }))
+      }
       return await handleToolsCall({ id: null, name: tool, args: input ?? {} })
     }
 
@@ -169,6 +184,11 @@ export async function POST(req: NextRequest) {
     if (body && typeof body === 'object' && 'method' in body) {
       const { id = null, method, params } = body as { id?: string | number | null; method: string; params?: unknown }
       if (method === 'initialize') {
+        if (!isAuthorized) {
+          return withCors(
+            NextResponse.json({ jsonrpc: '2.0', id, error: { code: -32001, message: 'Unauthorized' } })
+          )
+        }
         return withCors(
           NextResponse.json({
             jsonrpc: '2.0',
@@ -192,6 +212,11 @@ export async function POST(req: NextRequest) {
         return withCors(NextResponse.json({ jsonrpc: '2.0', id, result: 'pong' }))
       }
       if (method === 'tools/list') {
+        if (!isAuthorized) {
+          return withCors(
+            NextResponse.json({ jsonrpc: '2.0', id, error: { code: -32001, message: 'Unauthorized' } })
+          )
+        }
         return withCors(
           NextResponse.json({
             jsonrpc: '2.0',
@@ -203,9 +228,15 @@ export async function POST(req: NextRequest) {
         )
       }
       if (method === 'tools/call') {
+        if (!session?.user && !isApiKeyValid) {
+          return withCors(NextResponse.json({ jsonrpc: '2.0', id, error: { code: -32001, message: 'Unauthorized' } }))
+        }
         const p = (params ?? {}) as Record<string, unknown>
         const name = p.name as string
         const args = (p.arguments ?? {}) as unknown
+        if (isApiKeyValid && !session?.user) {
+          return await withMcpAuth(() => handleToolsCall({ id, name, args }))
+        }
         return await handleToolsCall({ id, name, args })
       }
       return withCors(
@@ -276,4 +307,18 @@ function safeStringify(value: unknown): string {
   } catch {
     return String(value)
   }
+}
+
+function checkApiKey(req: NextRequest): boolean {
+  const header = req.headers.get('authorization') || ''
+  const apiKeyHeader = req.headers.get('x-api-key') || ''
+  const bearerPrefix = 'bearer '
+  const tokenFromBearer = header.toLowerCase().startsWith(bearerPrefix)
+    ? header.slice(bearerPrefix.length).trim()
+    : ''
+  const url = req.nextUrl
+  const tokenFromQuery = url.searchParams.get('api_key') || url.searchParams.get('token') || url.searchParams.get('key') || ''
+  const provided = tokenFromBearer || apiKeyHeader || tokenFromQuery
+  if (!provided) return false
+  return !!validateKey(provided)
 }

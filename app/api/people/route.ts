@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server'
 import { User } from '@/app/actions/schemas'
 import { searchUsers } from '@/app/actions/actions'
 import { addUser } from '@/app/actions/actions'
+import { auth } from '@/auth'
 
 export async function GET(request: NextRequest) {
+  const session = await auth()
+  if (!session || !session.user) {
+    return NextResponse.json({ error: 'Unauthorized' })
+  }
   const searchParams = request.nextUrl.searchParams
   const query = searchParams.get('query')
 
@@ -26,6 +31,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth()
+  if (!session || !session.user) {
+    return NextResponse.json({ error: 'Unauthorized' })
+  }
   try {
     const body = await request.json()
     const created = await addUser(body)

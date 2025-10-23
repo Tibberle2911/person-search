@@ -9,4 +9,6 @@ export const { handlers, signIn, signOut, auth} = NextAuth ({
         }),
     ],
     secret: process.env.AUTH_SECRET,
+    // Note: Per-user MCP keys are managed via /api/mcp/session-key endpoints to keep
+    // Node-only code out of Edge-compatible areas like middleware.
 })

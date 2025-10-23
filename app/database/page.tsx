@@ -71,6 +71,37 @@ export type UserFormData = z.infer<typeof userFormSchema>
           </CardContent>
         </Card>
 
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>MCP API access</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-3 text-sm text-muted-foreground">
+              Tools at <code>/api/mcp</code> require authentication. You can authenticate via your browser session (cookies) or by adding an API token header for headless agents.
+            </p>
+            <div className="mb-3">
+              <div className="font-semibold mb-1">Headers</div>
+              <pre className="bg-muted p-3 rounded text-sm overflow-auto">{`Authorization: Bearer <MCP_API_TOKEN>
+x-api-key: <MCP_API_TOKEN>`}</pre>
+            </div>
+            <div className="mb-3">
+              <div className="font-semibold mb-1">PowerShell example</div>
+              <pre className="bg-muted p-3 rounded text-sm overflow-auto">{`$headers = @{ 'Authorization' = 'Bearer <MCP_API_TOKEN>' }
+$b = '{"tool":"list_users","input":{}}'
+Invoke-RestMethod -Uri http://localhost:3000/api/mcp -Method POST -Body $b -ContentType 'application/json' -Headers $headers | ConvertTo-Json -Depth 7`}</pre>
+            </div>
+            <div className="mb-3">
+              <div className="font-semibold mb-1">cURL example</div>
+              <pre className="bg-muted p-3 rounded text-sm overflow-auto">{`curl -s -X POST \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <MCP_API_TOKEN>" \
+  -d '{"method":"tools/call","id":1,"params":{"name":"search_users","arguments":{"query":"C"}}}' \
+  http://localhost:3000/api/mcp | jq .`}</pre>
+            </div>
+            <p className="text-xs text-muted-foreground">Tip: visit <code>/api/mcp/info</code> while logged in to see whether a token is configured and a masked preview.</p>
+          </CardContent>
+        </Card>
+
         <Button asChild variant="link" className="mt-4">
           <Link href="/">Back to Home</Link>
         </Button>

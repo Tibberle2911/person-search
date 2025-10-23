@@ -6,6 +6,9 @@ import { Search, Moon, Sun, X } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from "@/components/ui/button"
 import { useState } from 'react'
+import dynamic from 'next/dynamic'
+
+const AuthStatus = dynamic(() => import('./auth-status'), { ssr: false })
 
 export default function Navbar() {
   const { theme, setTheme } = useTheme()
@@ -27,6 +30,8 @@ export default function Navbar() {
             <Link href="/about" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:text-primary">About</Link>
             <Link href="/github" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:text-primary">GitHub</Link>
             <Link href="/database" className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:text-primary">Database</Link>
+            <div className="mx-2 h-5 w-px bg-border" />
+            <AuthStatus />
             <Button variant="ghost" size="icon" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">
               <span className="sr-only">Toggle theme</span>
               <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -50,6 +55,9 @@ export default function Navbar() {
           <Link href="/about" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary">About</Link>
           <Link href="/github" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary">GitHub</Link>
           <Link href="/database" className="block px-3 py-2 rounded-md text-base font-medium text-foreground hover:text-primary">Database</Link>
+          <div className="px-3 py-2">
+            <AuthStatus />
+          </div>
           <div className="px-3 py-2">
             <Button variant="outline" size="sm" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>Toggle theme</Button>
           </div>

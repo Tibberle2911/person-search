@@ -16,7 +16,7 @@ function Architecture() {
           <li>API routes under <code>app/api</code> provide REST-like endpoints for searching and CRUD operations.</li>
           <li>The project includes Prisma as a dependency (recommended), but the current action implementations use a shared <code>pg</code> Pool for raw SQL queries. The repository includes an example Prisma schema in the documentation.</li>
           <li>UI primitives and components are provided by shadcn/ui and Tailwind CSS for consistent styling and accessibility.</li>
-          <li>An in-memory server-side logger is used for development to display live request and DB event logs on the homepage.</li>
+          <li>The homepage now focuses on MCP connection guidance with per-user API keys for agent access.</li>
         </ul>
 
         <h3 className="font-semibold mt-4">Data flow (simplified)</h3>
