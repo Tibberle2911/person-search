@@ -9,7 +9,7 @@
 			"type": "stdio"
 		},
 		"person-search-mcp": {
-			"url": "http://localhost:3003/api/mcp",
+			"url": "http://localhost:3002/api/mcp",
 			"type": "http"
 		}
 	},
