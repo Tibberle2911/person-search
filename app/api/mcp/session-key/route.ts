@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { generateKey, listForUser, revokeAllForUser } from '@/lib/mcpKeys'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 export async function GET(req: Request) {
   const session = await auth()
   if (!session?.user?.email) {
@@ -11,12 +14,12 @@ export async function GET(req: Request) {
   const wantsNew = url.searchParams.get('new') === '1' || url.searchParams.get('rotate') === '1'
   const userRef = session.user.email
   if (wantsNew) {
-    revokeAllForUser(userRef)
-    const token = generateKey(userRef)
+    await revokeAllForUser(userRef)
+    const token = await generateKey(userRef)
     return NextResponse.json({ apiKey: token, rotated: true })
   }
-  const existing = listForUser(userRef)
-  const token = existing[0] || generateKey(userRef)
+  const existing = await listForUser(userRef)
+  const token = existing[0] || await generateKey(userRef)
   return NextResponse.json({ apiKey: token })
 }
 
@@ -25,6 +28,6 @@ export async function DELETE() {
   if (!session?.user?.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-  revokeAllForUser(session.user.email)
+  await revokeAllForUser(session.user.email)
   return NextResponse.json({ ok: true })
 }

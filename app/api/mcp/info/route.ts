@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { listForUser } from '@/lib/mcpKeys'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 function maskToken(token: string) {
   if (token.length <= 8) return '*'.repeat(token.length)
   return token.slice(0, 4) + '*'.repeat(token.length - 8) + token.slice(-4)
@@ -10,7 +13,7 @@ function maskToken(token: string) {
 export async function GET() {
   const session = await auth()
   const userEmail = session?.user?.email || null
-  const keys = userEmail ? listForUser(userEmail) : []
+  const keys = userEmail ? await listForUser(userEmail) : []
   const tokenPresent = keys.length > 0
 
   const base = {

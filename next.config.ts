@@ -1,43 +1,34 @@
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants'
 import path from 'path';
 
-const nextConfig: NextConfig = {
-  reactStrictMode: true,
-  experimental: {
-    // Enable turbo for both dev and build
-    turbo: {
-      rules: {
-        // Include the default rules
-        // This ensures compatibility with existing webpack configurations
-        include: ['**/*'],
-      },
-      // Resolve modules using Node.js resolution
-      resolveAlias: {
-        // Add any custom aliases here if needed
-      }
-    }
-  },
-  webpack: (config, { isServer }) => {
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': path.resolve(__dirname),
-    };
-    return config;
-  },
-  pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
-  typescript: {
-    // !! WARN !!
-    // Dangerously allow production builds to successfully complete even if
-    // your project has type errors.
-    // !! WARN !!
-    ignoreBuildErrors: false,
-  },
-  eslint: {
-    // Warning: This allows production builds to successfully complete even if
-    // your project has ESLint errors.
-    ignoreDuringBuilds: false,
-  },
-};
+const config = (phase: string): NextConfig => {
+  const isDev = phase === PHASE_DEVELOPMENT_SERVER
+  return {
+    reactStrictMode: true,
+    // Place dev artifacts in a different folder to reduce OneDrive locking collisions
+    distDir: isDev ? '.next-dev' : undefined,
+    // Migrate from deprecated experimental.turbo to top-level turbopack config
+    turbopack: {
+      // Silence root inference warning by explicitly setting the root
+      root: __dirname,
+    },
+    webpack: (config, { isServer }) => {
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        '@': path.resolve(__dirname),
+      };
+      return config;
+    },
+    pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
+    typescript: {
+      ignoreBuildErrors: false,
+    },
+    eslint: {
+      ignoreDuringBuilds: false,
+    },
+  }
+}
 
-export default nextConfig;
+export default config;
 

@@ -6,6 +6,9 @@ import { auth } from '@/auth'
 import { withMcpAuth } from '@/lib/authz'
 import { validateKey } from '@/lib/mcpKeys'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
 // Minimal MCP-over-HTTP handler inspired by vercel/mcp-handler roll-dice pattern
 // Supports JSON-RPC 2.0 methods: initialize, tools/list, tools/call
 
@@ -150,7 +153,7 @@ export async function POST(req: NextRequest) {
   try {
     // AuthZ: prefer session cookie; fall back to API key in headers for headless agents
     const session = await auth()
-    const isApiKeyValid = checkApiKey(req)
+    const isApiKeyValid = await checkApiKeyAsync(req)
     const isAuthorized = !!session?.user || isApiKeyValid
     const contentType = req.headers.get('content-type') || ''
     const isJson = contentType.includes('application/json')
@@ -309,7 +312,7 @@ function safeStringify(value: unknown): string {
   }
 }
 
-function checkApiKey(req: NextRequest): boolean {
+async function checkApiKeyAsync(req: NextRequest): Promise<boolean> {
   const header = req.headers.get('authorization') || ''
   const apiKeyHeader = req.headers.get('x-api-key') || ''
   const bearerPrefix = 'bearer '
@@ -320,5 +323,5 @@ function checkApiKey(req: NextRequest): boolean {
   const tokenFromQuery = url.searchParams.get('api_key') || url.searchParams.get('token') || url.searchParams.get('key') || ''
   const provided = tokenFromBearer || apiKeyHeader || tokenFromQuery
   if (!provided) return false
-  return !!validateKey(provided)
+  return !!(await validateKey(provided))
 }
