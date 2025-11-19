@@ -2,254 +2,512 @@
 
 ## Description
 
-Person Search is a Next.js application upgraded to leverage **Next.js 15.1** and **React 19**. It demonstrates advanced search functionality using Next.js Server Components and react-select's `AsyncSelect` component. Users can search for people from a pre-populated list and view detailed information about the selected person.
+Person Search is a full-stack Next.js application demonstrating production-ready patterns for **Next.js 15**, **React 19**, **NextAuth v5 (Google OAuth)**, **Postgres**, and the **Model Context Protocol (MCP)**. I built this to showcase modern server-component architecture, session-based authentication, and headless AI agent integration via per-user API keys.
 
-The upgrade to Next.js 15.1 introduced significant breaking changes, including a shift in how `params` and `searchParams` are handled, leading to a complete redesign of the `user-search` component to fully align with Server Components.
+The application provides:
+- **User CRUD**: Search, create, update, and delete users with server-side validation
+- **Google OAuth**: Secure authentication flow with NextAuth v5 and session management
+- **MCP over HTTP**: A JSON-RPC 2.0 endpoint exposing user operations as tools for AI agents
+- **Dual authorization**: Session cookies for web UI, API keys for headless/agent access
+- **Async Server Components**: Next.js 15's new patterns for `searchParams` and data fetching
 
 ## Features
 
-- Asynchronous search functionality
-- Server-side filtering of user data
-- Server-rendered and hydrated client-side components
-- Single data fetch for improved performance
-- Responsive design using Tailwind CSS
-- Accessibility-focused UI components from Radix UI
-- Custom fonts (Geist Sans and Geist Mono)
-- Improved type safety with TypeScript
-- Modular and reusable component architecture
+- **Asynchronous user search** with server-side filtering and prefix matching
+- **Server Components**: All data fetching happens server-side with React 19 Server Components
+- **NextAuth v5 (Google OAuth)**: Production-ready authentication with `trustHost` for Vercel deployments
+- **MCP JSON-RPC 2.0 API**: Six tools (`search_users`, `get_user_by_id`, `add_user`, `update_user`, `delete_user`, `list_users`) for AI agent integration
+- **Per-user API keys**: Postgres-backed tokens with in-memory fallback for local development
+- **Middleware protection**: Session-based route guards for `/api/people/*`
+- **CORS-enabled MCP endpoint**: Cross-origin access for headless agents with Authorization header support
+- **Type-safe validation**: Zod schemas for all user input and form validation
+- **Responsive UI**: Tailwind CSS + shadcn/ui components with Geist Sans/Mono fonts
+- **Toast notifications**: Success/error feedback with Sonner
+- **Dark/light theme**: System-aware theme toggle with next-themes
 
 ## Technologies Used
 
-- **Next.js 15.1** - React framework for building modern web applications
-- **React 19** - Latest React version with concurrent rendering improvements
-- **TypeScript** - Strongly-typed superset of JavaScript
-- **Node.js 20.17.0** - Required for compatibility with Next.js 15.1
-- **Tailwind CSS** - Utility-first CSS framework
-- **Radix UI** - Collection of accessible, unstyled UI components
-- **React Hook Form** - Performant and flexible forms library
-- **Zod** - TypeScript-first schema declaration and validation library
-- **React Select** - Flexible Select Input control for React
-- **Sonner** - Lightweight toast notifications for React
+- **Next.js 15** - App Router with Server Components and async `searchParams`
+- **React 19** - Server Components, Suspense, and concurrent rendering
+- **TypeScript** - Full type safety across server actions, API routes, and components
+- **Node.js 20.17.0+** - Required for Next.js 15 compatibility
+- **NextAuth v5** - OAuth 2.0 authentication with Google provider
+- **Postgres (pg)** - User data and MCP API key persistence via `pg` Pool
+- **Tailwind CSS** - Utility-first styling with responsive design
+- **shadcn/ui** - Radix UI primitives (Dialog, Card, Button, etc.) styled with Tailwind
+- **React Hook Form** - Performant form state management with Zod resolver
+- **Zod** - Schema validation for API inputs and form data
+- **Sonner** - Toast notifications for user feedback
+- **next-themes** - System-aware dark/light mode toggle
 
 ### Minimum Node.js Version
 
-The application has been tested with **Node.js 20.17.0**. Features such as ECMAScript modules and async server components require Node.js 20 or newer, making this the minimum requirement.
+I use **Node.js 20.17.0+**. Next.js 15 requires Node 20 for async Server Components and modern tooling.
 
 ## Getting Started
 
 ### Prerequisites
 
 - Node.js 20.17.0 or newer
-- npm
+- pnpm (recommended package manager)
+- Postgres database (for production) or in-memory mode for local dev
+- Google OAuth credentials from Google Cloud Console
 
 ### Installation
 
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/gocallum/person-search.git
+   git clone https://github.com/Tibberle2911/person-search.git
    cd person-search
    ```
 
 2. Install dependencies:
 
    ```bash
-   npm install
+   pnpm install
    ```
 
-3. Create a `.env.local` file in the root directory and add any necessary environment variables.
+3. Set up environment variables:
+
+   Create a `.env.local` file in the root directory:
+
+   ```bash
+   # Required for NextAuth v5
+   AUTH_SECRET=<32+ byte random string base64-encoded>
+   # Alternative (legacy): NEXTAUTH_SECRET=<secret>
+
+   # Google OAuth credentials
+   GOOGLE_CLIENT_ID=<your-google-client-id>
+   GOOGLE_CLIENT_SECRET=<your-google-client-secret>
+
+   # Postgres connection (optional for local dev; required for production)
+   DATABASE_URL=postgres://user:pass@host:5432/dbname
+
+   # Optional: Vercel deployment config
+   # NEXTAUTH_URL=https://your-domain.com (not needed with trustHost: true)
+   ```
+
+4. Initialize the database:
+
+   If using Postgres, create the `users` table:
+
+   ```sql
+   CREATE TABLE users (
+     id TEXT PRIMARY KEY,
+     name TEXT NOT NULL,
+     phone_number TEXT NOT NULL,
+     email TEXT NOT NULL
+   );
+   CREATE UNIQUE INDEX idx_users_name ON users (LOWER(name));
+   ```
+
+   The MCP API keys table will be auto-created on first use.
 
 ### Running the Development Server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
-## How It Works (Next.js 15.1 & React 19)
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-### Key Changes in `UserSearch` Component
+### Building for Production
 
-1. **Server Component Design**:
-   - The `user-search` component is now a **Server Component**, leveraging `searchParams` and fetching user details server-side.
-   - `searchParams` are asynchronous in Next.js 15.1, so the `user-search` component resolves them before rendering.
+```bash
+pnpm build
+pnpm start
+```
 
-   ```tsx
-   export default async function UserSearch({ searchParams }: { searchParams: Promise<{ userId?: string }> }) {
-     const resolvedSearchParams = await searchParams;
-     const selectedUserId = resolvedSearchParams?.userId || null;
-     const user = selectedUserId ? await getUserById(selectedUserId) : null;
+## Architecture Overview
 
-     return (
-       <div className="space-y-6">
-         <SearchInput />
-         {selectedUserId && (
-           <Suspense fallback={<p>Loading user...</p>}>
-             {user ? <UserCard user={user} /> : <p>User not found</p>}
-           </Suspense>
-         )}
-       </div>
-     );
-   }
-   ```
+### Authentication Flow
 
-2. **Improved Performance**:
-   - Data fetching has been optimized to avoid redundant calls. The user object is fetched once in `user-search` and passed as a prop to child components like `UserCard` and `DeleteButton`.
-   - This eliminates multiple fetches, improving performance and reducing server load.
+I implement **NextAuth v5** with Google OAuth for web UI access and **per-user API keys** for headless agent/MCP access.
 
-3. **Interaction with `SearchInput`**:
-   - `SearchInput` remains a **Client Component**, responsible for interacting with the user through `react-select`'s `AsyncSelect`.
-   - When a user is selected, the URL is updated with the user's ID using `window.history.pushState`. This triggers a re-render of `user-search` to reflect the updated state.
+**Key files:**
+- `auth.ts`: Configures NextAuth with Google provider, accepts `AUTH_SECRET` or `NEXTAUTH_SECRET`, enables `trustHost: true` for Vercel preview/production URLs
+- `middleware.ts`: Protects `/api/people/*` routes with session checks
+- `lib/mcpKeys.ts`: Generates, validates, and revokes per-user API keys (Postgres-backed with in-memory fallback)
+- `lib/authz.ts`: `AsyncLocalStorage` context for marking MCP-authorized requests so server actions can skip session checks
 
-4. **Improved Error Handling**:
-   - Validations and controlled/uncontrolled input warnings have been resolved by ensuring consistent handling in forms using React Hook Form and Zod.
+**Flow:**
+1. User signs in via Google OAuth → NextAuth creates a session cookie
+2. Web UI calls `/api/mcp/session-key` to generate a personal API key
+3. MCP agent calls `/api/mcp` with `Authorization: Bearer <key>` or `x-api-key: <key>` header
+4. MCP route validates key via `lib/mcpKeys.validateKey()` and wraps handler in `withMcpAuth()`
+5. Server actions check `isMcpAuthorized()` or session; if either passes, action proceeds
 
-5. **Concurrency & Hydration**:
-   - React 19's concurrent rendering and Next.js 15.1's support for server components ensure seamless server-client hydration, reducing potential mismatches.
+### MCP (Model Context Protocol) Integration
 
-### Known Issues
+I expose six tools at `/api/mcp` using a lightweight JSON-RPC 2.0 handler:
 
-1. **Toast Messages**:
-   - Notifications in `DeleteButton` and `MutableDialog` are currently not showing. This requires debugging the integration of the `Sonner` toast library.
+**Tools:**
+- `search_users` - Prefix search by name (case-insensitive, limit 20)
+- `get_user_by_id` - Fetch single user by UUID
+- `add_user` - Create user (enforces name uniqueness case-insensitively)
+- `update_user` - Update user fields (partial updates, name uniqueness check)
+- `delete_user` - Delete by UUID
+- `list_users` - Paginated list (default limit 1000, max 10000)
 
-2. **Theme Support**:
-   - The `theme-provider` for managing dark and light modes has been removed temporarily. The Tailwind stylesheets need to be updated to align with the new Next.js configuration.
+**Transport:**
+- POST `/api/mcp` for JSON-RPC requests (HTTP transport)
+- GET `/api/mcp` returns error message (SSE not implemented in lightweight handler)
+- Simplified adapter: accepts `{ tool: "search_users", input: { query: "john" } }` and converts to JSON-RPC `tools/call`
 
-3. **Hydration Warnings**:
-   - Some hydration warnings may occur due to external browser extensions like Grammarly or differences in runtime environments. Suppression flags have been added, but further testing is recommended.
+**Authorization:**
+- Session cookie (web UI) OR
+- API key via `Authorization: Bearer <token>`, `x-api-key: <token>` header, or `?api_key=<token>` query param
+
+**CORS:**
+- Enabled for cross-origin agent access
+- Allows `Authorization` and `x-api-key` headers
+- All responses include `Access-Control-Allow-Origin: *`
+
+### Data Layer
+
+**Database:**
+- Postgres via `pg` Pool (`lib/db.ts`)
+- Connection string from `DATABASE_URL` env var
+- SSL enabled with `rejectUnauthorized: false` for managed Postgres hosts
+
+**Tables:**
+- `users` (id, name, phone_number, email) - User data with unique case-insensitive name index
+- `mcp_api_keys` (id, user_ref, token, created_at, revoked) - API key management
+
+**In-memory fallback:**
+- When `DATABASE_URL` is absent, `lib/mcpKeys.ts` uses Map-based storage for local dev
+
+**Validation:**
+- Zod schemas in `app/actions/schemas.ts`:
+  - `userSchema`: Full user object with UUID id
+  - `userFormSchema`: Omits id for create/update forms
+  - Phone number must match Australian mobile format: `/^04\d{8}$/`
+  - Email must be valid email format
+
+### Server Actions & Route Handlers
+
+**Server Actions** (`app/actions/actions.ts`):
+- `searchUsers(query)` - Case-insensitive prefix search
+- `getUserById(id)` - Cached with React `cache()`
+- `addUser(data)` - Validates uniqueness, generates UUID
+- `updateUser(id, partial)` - Merges fields, validates uniqueness
+- `deleteUser(id)` - Deletes and revalidates path
+- `listUsers({ offset, limit })` - Paginated list
+
+All actions call `requireAuth()` which accepts either:
+- Session via `auth()` (NextAuth)
+- OR MCP authorization via `isMcpAuthorized()` (set by `/api/mcp` route)
+
+**API Routes:**
+- `/api/auth/[...nextauth]/route.ts` - NextAuth handlers with `runtime = 'nodejs'` and `dynamic = 'force-dynamic'`
+- `/api/mcp/route.ts` - Main MCP endpoint with JSON-RPC handler
+- `/api/mcp/session-key/route.ts` - GET to issue/return API key, DELETE to revoke all keys
+- `/api/mcp/info/route.ts` - Metadata endpoint (masked token preview, auth requirements)
+- `/api/people/route.ts` - GET search endpoint, POST create endpoint (session-protected)
+
+### Component Architecture
+
+**Server Components:**
+- `app/page.tsx` - Home page with async `searchParams`
+- `app/components/user-search.tsx` - Fetches user by ID server-side, passes to child components
+- `app/components/user-card.tsx` - Displays user details
+
+**Client Components:**
+- `app/components/search-input-cmd.tsx` - cmdk-based search with async user lookup
+- `app/components/user-dialog.tsx` - Add user modal with React Hook Form + Zod
+- `app/components/user-edit-dialog.tsx` - Edit user modal
+- `app/components/delete-button.tsx` - Delete confirmation with toast feedback
+- `app/components/mcp-connect.tsx` - Displays API key and connection instructions for agents
+- `app/components/auth-status.tsx` - Shows sign in/out button based on session
+
+**Layout:**
+- `app/layout.tsx` - Root layout with ThemeProvider, SessionProvider, Navbar, Footer, Toaster
+- `app/components/navbar.tsx` - Navigation with auth-aware links
+- `app/components/footer.tsx` - Site footer
+
+### Middleware & Protection
+
+`middleware.ts` exports `auth` from `auth.ts` to protect:
+- `/api/people/:path*` - Requires active session
+
+The MCP endpoint (`/api/mcp`) is **not** in the middleware matcher because it handles authorization internally to support header-based API keys (middleware can't read bodies/headers for key extraction in Edge runtime).
 
 ---
 
-### Updated Project Structure
+## OAuth (Google) Configuration
+
+### Configuration Files
+
+**`auth.ts`:**
+```typescript
+import NextAuth from "next-auth"
+import GoogleProvider from "next-auth/providers/google"
+
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
+  ],
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  trustHost: true,
+})
+```
+
+**Key settings:**
+- `secret`: Accepts either `AUTH_SECRET` (NextAuth v5 standard) or `NEXTAUTH_SECRET` (legacy)
+- `trustHost: true`: Allows dynamic host URLs (essential for Vercel preview/production)
+- No `AUTH_URL` needed: `trustHost` auto-detects the host from incoming requests
+
+**`app/api/auth/[...nextauth]/route.ts`:**
+```typescript
+import { handlers } from '@/auth'
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+export const { GET, POST } = handlers
+```
+
+Forces Node.js runtime and disables static optimization for auth routes.
+
+### Google Cloud Setup
+
+1. **Create a project** in Google Cloud Console
+2. **Enable Google Identity Services API**
+3. **Create OAuth 2.0 Client ID** (type: Web application)
+4. **Add authorized redirect URIs**:
+   - Local: `http://localhost:3000/api/auth/callback/google`
+   - Production: `https://your-domain.com/api/auth/callback/google`
+   - Vercel preview: `https://your-project-*.vercel.app/api/auth/callback/google`
+5. **Copy Client ID and Secret** to `.env.local`
+
+
+### Environment Variables
+
+```bash
+# Required
+GOOGLE_CLIENT_ID=123456789.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-abc123...
+
+# Use either (v5 prefers AUTH_SECRET)
+AUTH_SECRET=<generate with: openssl rand -base64 32>
+# OR: NEXTAUTH_SECRET=<same format>
+
+# Optional for production
+DATABASE_URL=postgres://user:pass@host:5432/dbname
+```
+
+### Verification
+
+```bash
+pnpm dev
+```
+
+- Visit `http://localhost:3000/api/auth/providers` → Google should appear
+- Sign in via UI → Visit `/api/auth/session` → JSON with user info should be present
+
+###Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| "MissingSecret" 500 | Set `AUTH_SECRET` or `NEXTAUTH_SECRET` |
+| Redirect URI mismatch | Add exact callback URL to Google OAuth Client |
+| Invalid credentials | Regenerate Client Secret in Google Cloud |
+| Provider not listed | Verify env vars and restart dev server |
+
+---
+
+## MCP Integration Details
+
+### API Key Management
+
+**Endpoints:**
+- `GET /api/mcp/session-key` - Issue or return existing API key for signed-in user
+- `GET /api/mcp/session-key?rotate=1` - Revoke all keys and issue a new one
+- `DELETE /api/mcp/session-key` - Revoke all keys for current user
+- `GET /api/mcp/info` - Metadata and masked token preview
+
+**Example: Get API Key**
+```bash
+# After signing in via browser, fetch your key:
+curl http://localhost:3000/api/mcp/session-key \
+  -H "Cookie: authjs.session-token=<your-session-cookie>"
+
+# Response:
+# { "apiKey": "abc123...xyz789" }
+```
+
+**Example: Using MCP Tools**
+```bash
+# Initialize connection
+curl -X POST http://localhost:3000/api/mcp \
+  -H "Authorization: Bearer <your-api-key>" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize"}'
+
+# Call search_users tool
+curl -X POST http://localhost:3000/api/mcp \
+  -H "x-api-key: <your-api-key>" \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"search_users","arguments":{"query":"john"}}}'
+
+# Simplified format (auto-converted)
+curl -X POST http://localhost:3000/api/mcp?api_key=<your-key> \
+  -d '{"tool":"search_users","input":{"query":"john"}}'
+```
+
+### VS Code MCP Configuration
+
+Add to `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "person-search": {
+      "url": "http://localhost:3000/api/mcp?api_key=<your-key>",
+      "type": "http"
+    }
+  }
+}
+```
+
+Reload VS Code, and the MCP tools will be available to GitHub Copilot.
+
+---
+
+## How It Works: Next.js 15 & React 19
+
+### Async `searchParams`
+
+Next.js 15 changed `searchParams` from a plain object to a Promise:
+
+```tsx
+export default async function UserSearch({ 
+  searchParams 
+}: { 
+  searchParams: Promise<{ userId?: string }> 
+}) {
+  const resolvedSearchParams = await searchParams
+  const selectedUserId = resolvedSearchParams?.userId || null
+  const user = selectedUserId ? await getUserById(selectedUserId) : null
+
+  return (
+    <div className="space-y-6">
+      <SearchInput />
+      {selectedUserId && (
+        <Suspense fallback={<p>Loading user...</p>}>
+          {user ? <UserCard user={user} /> : null}
+        </Suspense>
+      )}
+    </div>
+  )
+}
+```
+
+### Server-Side Data Fetching
+
+- `getUserById` is cached with React's `cache()`
+- Fetched once per page load in the Server Component
+- Passed as props to child components via server-to-client hydration
+
+### Client-Server Interaction
+
+`SearchInput` updates the URL when a user is selected:
+
+```tsx
+const handleSelect = (userId: string) => {
+  window.history.pushState({}, '', `/?userId=${userId}`)
+  window.location.reload() // Triggers server re-render
+}
+```
+
+---
+
+## Project Structure
 
 ```
 person-search/
 ├── app/
-│   ├── components/
-│   │   ├── user-search.tsx
-│   │   ├── search-input.tsx
-│   │   ├── user-card.tsx
-│   │   ├── user-dialog.tsx
-│   │   └── user-form.tsx
 │   ├── actions/
-│   │   ├── actions.ts
-│   │   └── schemas.ts
-│   └── page.tsx
-├── public/
-├── .eslintrc.json
-├── next.config.js
-├── package.json
-├── README.md
+│   │   ├── actions.ts          # Server actions (CRUD)
+│   │   └── schemas.ts          # Zod schemas
+│   ├── api/
+│   │   ├── auth/[...nextauth]/ # NextAuth handlers
+│   │   ├── mcp/                # MCP endpoint + key management
+│   │   │   ├── route.ts        # Main JSON-RPC handler
+│   │   │   ├── session-key/    # API key CRUD
+│   │   │   └── info/           # Metadata
+│   │   ├── people/             # Session-protected API
+│   │   └── debug-logs/         # Debug logging
+│   ├── components/
+│   │   ├── user-search.tsx     # Server: search results
+│   │   ├── search-input-cmd.tsx # Client: cmdk search
+│   │   ├── user-card.tsx       # User display
+│   │   ├── user-dialog.tsx     # Add modal
+│   │   ├── user-edit-dialog.tsx # Edit modal
+│   │   ├── delete-button.tsx   # Delete confirmation
+│   │   ├── mcp-connect.tsx     # MCP setup UI
+│   │   ├── auth-status.tsx     # Sign in/out
+│   │   ├── navbar.tsx          # Navigation
+│   │   └── footer.tsx          # Footer
+│   ├── globals.css
+│   ├── layout.tsx              # Root layout
+│   └── page.tsx                # Home page
+├── components/ui/              # shadcn/ui components
+├── lib/
+│   ├── db.ts                   # Postgres pool
+│   ├── mcpKeys.ts              # API key management
+│   ├── authz.ts                # Auth context
+│   ├── logger.ts               # Event logging
+│   └── utils.ts                # Utilities
+├── auth.ts                     # NextAuth config
+├── middleware.ts               # Route protection
+├── next.config.ts              # Next.js config
 ├── tailwind.config.ts
-└── tsconfig.json
+├── tsconfig.json
+└── package.json
 ```
 
-### Using `MutableDialog`
+---
 
-The `MutableDialog` component is a reusable dialog framework that can be used for both "Add" and "Edit" operations. It integrates form validation with Zod and React Hook Form, and supports passing default values for edit operations.
+## Deployment
 
-#### How `MutableDialog` Works
+### Vercel (Recommended)
 
-`MutableDialog` accepts the following props:
-- **`formSchema`**: A Zod schema defining the validation rules for the form.
-- **`FormComponent`**: A React component responsible for rendering the form fields.
-- **`action`**: A function to handle the form submission (e.g., adding or updating a user).
-- **`defaultValues`**: Initial values for the form fields, used for editing existing data.
-- **`triggerButtonLabel`**: Label for the button that triggers the dialog.
-- **`addDialogTitle` / `editDialogTitle`**: Titles for the "Add" and "Edit" modes.
-- **`dialogDescription`**: Description displayed inside the dialog.
-- **`submitButtonLabel`**: Label for the submit button.
+1. **Push to GitHub**
+2. **Import project** in Vercel dashboard
+3. **Add environment variables**:
+   ```
+   AUTH_SECRET=<generate new secret>
+   GOOGLE_CLIENT_ID=<from Google Cloud>
+   GOOGLE_CLIENT_SECRET=<from Google Cloud>
+   DATABASE_URL=<Vercel Postgres connection string>
+   ```
+4. **Update Google OAuth** redirect URIs to include:
+   ```
+   https://your-project.vercel.app/api/auth/callback/google
+   ```
+5. **Deploy** → Vercel auto-builds and deploys
 
-#### Example: Add Operation
+### Docker (Optional)
 
-To use `MutableDialog` for adding a new user:
-
-```tsx
-import { MutableDialog } from './components/mutable-dialog';
-import { userFormSchema, UserFormData } from './actions/schemas';
-import { addUser } from './actions/actions';
-import { UserForm } from './components/user-form';
-
-export function UserAddDialog() {
-  const handleAddUser = async (data: UserFormData) => {
-    try {
-      const newUser = await addUser(data);
-      return {
-        success: true,
-        message: `User ${newUser.name} added successfully`,
-        data: newUser,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: `Failed to add user: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      };
-    }
-  };
-
-  return (
-    <MutableDialog<UserFormData>
-      formSchema={userFormSchema}
-      FormComponent={UserForm}
-      action={handleAddUser}
-      triggerButtonLabel="Add User"
-      addDialogTitle="Add New User"
-      dialogDescription="Fill out the form below to add a new user."
-      submitButtonLabel="Save"
-    />
-  );
-}
+```dockerfile
+FROM node:20-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm install -g pnpm && pnpm install
+COPY . .
+RUN pnpm build
+CMD ["pnpm", "start"]
 ```
 
-#### Example: Edit Operation
+---
 
-To use `MutableDialog` for editing an existing user:
+## Testing
 
-```tsx
-import { MutableDialog } from './components/mutable-dialog';
-import { userFormSchema, UserFormData } from './actions/schemas';
-import { updateUser } from './actions/actions';
-import { UserForm } from './components/user-form';
+I include basic test setup with Vitest:
 
-export function UserEditDialog({ user }: { user: UserFormData }) {
-  const handleUpdateUser = async (data: UserFormData) => {
-    try {
-      const updatedUser = await updateUser(user.id, data);
-      return {
-        success: true,
-        message: `User ${updatedUser.name} updated successfully`,
-        data: updatedUser,
-      };
-    } catch (error) {
-      return {
-        success: false,
-        message: `Failed to update user: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      };
-    }
-  };
-
-  return (
-    <MutableDialog<UserFormData>
-      formSchema={userFormSchema}
-      FormComponent={UserForm}
-      action={handleUpdateUser}
-      defaultValues={user} // Pre-fill form fields with user data
-      triggerButtonLabel="Edit User"
-      editDialogTitle="Edit User Details"
-      dialogDescription="Modify the details below and click save to update the user."
-      submitButtonLabel="Update"
-    />
-  );
-}
+```bash
+pnpm test
 ```
 
-### Note: Future Refactoring for `ActionState` with React 19
-
-The `MutableDialog` component currently uses a custom `ActionState` type to handle the result of form submissions. However, React 19 introduces built-in support for `ActionState` in Server Actions, which can simplify this implementation. 
-
-#### Improvements to Make:
-- Replace the custom `ActionState` interface with React 19's built-in `ActionState`.
-- Use the `ActionState` directly within the form submission logic to align with React 19 best practices.
-- Refactor error handling and success notifications to leverage React's server-side error handling.
-
-This will be addressed in a future update to ensure the `MutableDialog` component remains aligned with React 19's capabilities.
-
+Test files use `.test.ts` or `.spec.ts` extensions.
